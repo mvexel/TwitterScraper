@@ -8,13 +8,27 @@ import re
 from shapely.wkt import dumps, loads
 from shapely.geometry import asPoint
 import psycopg2
-from psycopg2.extensions import adapt
+import psycopg2.extensions
+from psycopg2.extensions import adapt, register_adapter, AsIs
 
 SEARCH_HOST="search.twitter.com"
 SEARCH_PATH="/search.json"
 PG_DBNAME = "disaster"
 PG_USER = "disaster"
 PG_PASS = "disaster"
+
+class Point(object):
+	def __init__(self,x,y):
+		self.x = x
+		self.y = y
+	def __init__(self,xy):
+		self.x = xy[0]
+		self.y = xy[1]
+
+def adapt_point_wkt(point):
+	return AsIs("ST_GeomFromText(%s,4326)" % (adapt(asPoint([point.x,point.y]).wkt)))
+
+register_adapter(Point, adapt_point_wkt)
 
 class TwitterScraper(object):
 	def __init__(self, terms, lon = None, lat = None, radius = None, interval = 60, language = "nl"):
@@ -81,17 +95,21 @@ class TwitterScraper(object):
 
 	def submit(self, data):
 		#logging.debug(json.dumps(data,sort_keys=True, indent=4))
+		conn = psycopg2.connect("dbname="+PG_DBNAME+" user="+PG_USER+" password="+PG_PASS)
+		cur = conn.cursor()
 		llregex = re.compile('\d+\.\d+')
 		query = ""
 		for tweet in data:
 			lonlat = []
 			for m in llregex.finditer(tweet["location"]):
 				lonlat.insert(0,float(m.group()))
+			if len(lonlat)<2:
+				break
+			p = Point(lonlat)
 			logging.debug(asPoint(lonlat).wkt)
-			SQL = "INSERT INTO tweets (id,loc,userid,text) VALUES ( %s, ST_GeomFromText('%s',4326), %s , %s );" % (tweet["id_str"],asPoint(lonlat).wkt,tweet["from_user_id"],adapt(tweet["text"]))
-			query+=SQL
-			logging.debug(SQL)
-		conn = psycopg2.connect("dbname="+PG_DBNAME+" user="+PG_USER+" password="+PG_PASS)
-		cur = conn.cursor()
-		cur.execute(query)
+			logging.debug(tweet["text"])
+			logging.debug(cur.mogrify("INSERT INTO tweets (id,loc,userid,text) VALUES (%s, %s, %s, %s)", (int(tweet["id_str"]),p,int(tweet["from_user_id"]),tweet["text"])))
+			cur.execute("INSERT INTO tweets (id,loc,userid,text) VALUES (%s, %s, %s, %s)", (int(tweet["id_str"]),p,int(tweet["from_user_id"]),adapt(tweet["text"])))
 		conn.commit()
+		cur.close()
+		conn.close()
