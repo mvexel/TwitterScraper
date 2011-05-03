@@ -1,4 +1,4 @@
-#!/usr/local/bin/python
+#!/usr/bin/python
 
 import logging
 from TwitterScraper import TwitterScraper
