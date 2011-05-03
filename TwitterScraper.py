@@ -22,7 +22,7 @@ class TwitterScraper(object):
 		cur = conn.cursor()
 		cur.execute("SELECT max(id) from tweets")
 		max = cur.fetchone()
-		if max is None:
+		if max[0] is None:
 			logging.debug("max was none")
 		else:
 			logging.debug(max[0])
