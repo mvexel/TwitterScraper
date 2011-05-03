@@ -24,6 +24,7 @@ class TwitterScraper(object):
 		max = cur.fetchone()
 		if max[0] is None:
 			logging.debug("max was none")
+			self.max_id=0
 		else:
 			logging.debug(max[0])
 			self.max_id = int(max[0])
