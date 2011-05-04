@@ -11,6 +11,7 @@ import psycopg2
 import psycopg2.extensions
 from psycopg2.extensions import adapt, register_adapter, AsIs
 from datetime import datetime,timedelta
+from geopy import geocoders
 
 SEARCH_HOST="search.twitter.com"
 SEARCH_PATH="/search.json"
@@ -59,6 +60,7 @@ class TwitterScraper(object):
 		c = httplib.HTTPConnection(SEARCH_HOST)
 		logging.debug(' '.join(self.terms))
 		params['ors'] = ' '.join(self.terms)
+		params['rpp'] = 100
 		if self.max_id is not None:
 			params['since_id'] = self.max_id
 			if self.lat and self.lon and self.radius:
@@ -96,18 +98,20 @@ class TwitterScraper(object):
 			time.sleep(float(self.interval))
 
 	def submit(self, data):
-		#logging.debug(json.dumps(data,sort_keys=True, indent=4))
+		logging.debug("submitting %d tweets" % len(data))
 		conn = psycopg2.connect("dbname="+PG_DBNAME+" user="+PG_USER+" password="+PG_PASS)
 		cur = conn.cursor()
 		llregex = re.compile('\d+\.\d+')
-		query = ""
 		for tweet in data:
+			logging.debug("parsing tweet...")
 			offset=0
 			lonlat = []
 			for m in llregex.finditer(tweet["location"]):
 				lonlat.insert(0,float(m.group()))
 			if len(lonlat)<2:
-				break
+				logging.error("no complete location, got %s" , tweet["location"])
+				
+				continue
 			p = Point(lonlat)
 			timestring = str(tweet["created_at"])
 			try:
