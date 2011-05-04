@@ -109,9 +109,15 @@ class TwitterScraper(object):
 			for m in llregex.finditer(tweet["location"]):
 				lonlat.insert(0,float(m.group()))
 			if len(lonlat)<2:
-				logging.error("no complete location, got %s" , tweet["location"])
-				
-				continue
+				logging.info("got inexact location: %s - geocoding..." , tweet["location"])
+				try:
+					g = geocoders.Google()
+					place, (lat, lng) = g.geocode(tweet["location"])
+					logging.info("geocoded %s as %s, coords %f,%f" % (tweet["location"],place,lng,lat))
+					lonlat = [lng,lat]
+				except:
+					logging.warn("geocoding failed, skipping this tweet...")
+					continue
 			p = Point(lonlat)
 			timestring = str(tweet["created_at"])
 			try:
