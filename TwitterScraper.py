@@ -10,6 +10,7 @@ from shapely.geometry import asPoint
 import psycopg2
 import psycopg2.extensions
 from psycopg2.extensions import adapt, register_adapter, AsIs
+from datetime import datetime,timedelta
 
 SEARCH_HOST="search.twitter.com"
 SEARCH_PATH="/search.json"
@@ -26,9 +27,10 @@ class Point(object):
 		self.y = xy[1]
 
 def adapt_point_wkt(point):
-	return AsIs("ST_GeomFromText(%s,4326)" % (adapt(asPoint([point.x,point.y]).wkt)))
-
+	return AsIs("ST_GeomFromText(%s,4326)" % (adapt(asPoint([point.x,point.y]).wkt)))	
+	
 register_adapter(Point, adapt_point_wkt)
+
 
 class TwitterScraper(object):
 	def __init__(self, terms, lon = None, lat = None, radius = None, interval = 60, language = "nl"):
@@ -100,16 +102,26 @@ class TwitterScraper(object):
 		llregex = re.compile('\d+\.\d+')
 		query = ""
 		for tweet in data:
+			offset=0
 			lonlat = []
 			for m in llregex.finditer(tweet["location"]):
 				lonlat.insert(0,float(m.group()))
 			if len(lonlat)<2:
 				break
 			p = Point(lonlat)
+			timestring = str(tweet["created_at"])
+			try:
+				offset = int(timestring[-5:])
+			except:
+				logging.debug("Could not parse timezone from %s" % timestring)
+			delta = timedelta(hours = offset / 100)
+			dt = datetime.strptime(tweet["created_at"][:-6], "%a, %d %b %Y %H:%M:%S")
+			dt -= delta
+			logging.debug("time from string %s is %s" % (timestring,dt))
 			logging.debug(asPoint(lonlat).wkt)
 			logging.debug(tweet["text"])
-			logging.debug(cur.mogrify("INSERT INTO tweets (id,loc,userid,text) VALUES (%s, %s, %s, %s)", (int(tweet["id_str"]),p,int(tweet["from_user_id"]),tweet["text"])))
-			cur.execute("INSERT INTO tweets (id,loc,userid,text) VALUES (%s, %s, %s, %s)", (int(tweet["id_str"]),p,int(tweet["from_user_id"]),adapt(tweet["text"])))
+			logging.debug(cur.mogrify("INSERT INTO tweets (id,loc,userid,text,datetime) VALUES (%s, %s, %s, %s, %s)", (int(tweet["id_str"]),p,int(tweet["from_user_id"]),tweet["text"], dt)))
+			cur.execute("INSERT INTO tweets (id,loc,userid,text,datetime) VALUES (%s, %s, %s, %s, %s)", (int(tweet["id_str"]),p,int(tweet["from_user_id"]),tweet["text"], dt))
 		conn.commit()
 		cur.close()
 		conn.close()

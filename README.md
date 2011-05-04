@@ -29,6 +29,15 @@ The constructor takes the following arguments:
 * interval = Optional. Interval in seconds between searches. Defaults to 60 (1 minute) 
 * language = Optional. Language of tweets to search for. [ISO 639-1]("http://en.wikipedia.org/wiki/ISO_639-1")-code. Defaults to Dutch (nl)
 
+When you re-initialize a scraper and start scraping again, it will pick up where it left off - it will always take the newest tweet already in the DB as a starting point for the search.
+
+Wish list
+---------
+* Make it work as a daemon
+* Wrap it in a proper command line tool, taking arguments
+** To empty current DB
+** To set the scraper arguments (see above)
+
 DB schema
 ---------
 
@@ -40,6 +49,7 @@ You will need a PostGIS database containing a table like this:
 	  userid bigint,
 	  loc geometry,
 	  id bigint NOT NULL,
+	  datetime timestamp with time zone,
 	  CONSTRAINT pkey_id PRIMARY KEY (id),
 	  CONSTRAINT enforce_dims_loc CHECK (st_ndims(loc) = 2),
 	  CONSTRAINT enforce_geotype_loc CHECK (geometrytype(loc) = 'POINT'::text OR loc IS NULL),
