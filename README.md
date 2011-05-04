@@ -6,7 +6,7 @@ Scrapes twitter with regular intervals for geotweets containing one or more sear
 Requirements
 ------------
 
-This module uses [Shapely]("http://gispython.org/shapely/docs/1.2/index.html") and [psycopg2]("http://initd.org/psycopg/") so install those using pip or easy_install. 
+This module uses [Shapely]("http://gispython.org/shapely/docs/1.2/index.html"), [psycopg2]("http://initd.org/psycopg/") and [geopy]("http://code.google.com/p/geopy/") so install those using pip or easy_install. 
 
 You need a PostGIS database with a table to hold the tweets (see below for the schema).
 
@@ -33,6 +33,7 @@ When you re-initialize a scraper and start scraping again, it will pick up where
 
 Wish list
 ---------
+* The max number of results returned per response is 100. Situations with more than 100 results are not handled yet. 
 * Make it work as a daemon
 * Wrap it in a proper command line tool, taking arguments
 ** To empty current DB

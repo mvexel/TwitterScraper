@@ -131,7 +131,10 @@ class TwitterScraper(object):
 			logging.debug(asPoint(lonlat).wkt)
 			logging.debug(tweet["text"])
 			logging.debug(cur.mogrify("INSERT INTO tweets (id,loc,userid,text,datetime) VALUES (%s, %s, %s, %s, %s)", (int(tweet["id_str"]),p,int(tweet["from_user_id"]),tweet["text"], dt)))
-			cur.execute("INSERT INTO tweets (id,loc,userid,text,datetime) VALUES (%s, %s, %s, %s, %s)", (int(tweet["id_str"]),p,int(tweet["from_user_id"]),tweet["text"], dt))
+			try:
+				cur.execute("INSERT INTO tweets (id,loc,userid,text,datetime) VALUES (%s, %s, %s, %s, %s)", (int(tweet["id_str"]),p,int(tweet["from_user_id"]),tweet["text"], dt))
+			except:
+				logging.error("insertion failed")
 		conn.commit()
 		cur.close()
 		conn.close()
